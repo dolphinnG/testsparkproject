@@ -30,9 +30,9 @@ def main():
     # Initialize Spark session
     spark = SparkSession.builder \
         .appName("gggg wwwww") \
-        .config("spark.driver.host", 'host.docker.internal') \
         .getOrCreate()
         # .config("spark.driver.host", os.environ.get("POD_IP")) \
+        # .config("spark.driver.host", 'host.docker.internal') \
 
     # Create a pandas DataFrame
     pandas_df = pd.DataFrame({
