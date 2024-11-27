@@ -18,11 +18,6 @@ print(a.another_method())
 
 def main():
     print(a.another_method())
-    # os.environ['MLFLOW_S3_ENDPOINT_URL'] = f"http://mlflowtest-minio:80"
-    # os.environ['AWS_ACCESS_KEY_ID'] = "admin"
-    # os.environ['AWS_SECRET_ACCESS_KEY'] = "admin123"
-    # mlflow.set_tracking_uri("http://mlflowtest-tracking:80")
-    
     mlflow.set_experiment("SPARK-TEST-5")
     
     logger.log(logging.INFO, "Starting the spark session")
@@ -47,11 +42,20 @@ def main():
     lor.setPredictionCol("").setProbabilityCol("prediction")
     lor_model = lor.fit(train_df)
 
+    # Log parameters
+    mlflow.log_param("maxIter", lor.getMaxIter())
+    mlflow.log_param("regParam", lor.getRegParam())
+
     test_df = train_df.select("features")
     prediction_df = lor_model.transform(train_df)
     prediction_df.printSchema() # prediction result is a vector of probabilities of the label classes summing up to 1
     
     res = prediction_df.select("prediction")
+
+    # Log metrics
+    accuracy = res.filter(res["prediction"] == train_df["label"]).count() / float(train_df.count())
+    mlflow.log_metric("accuracy", accuracy)
+
     signature = infer_signature(test_df, prediction_df)
 
     with mlflow.start_run() as run:
@@ -59,12 +63,14 @@ def main():
             lor_model,
             "model",
             # signature=signature,
-            dfs_tmpdir="/opt/bitnami/spark/tmp/"
+            dfs_tmpdir="/opt/bitnami/spark/tmp/" # MUST
         )
+        # Register the model
+        mlflow.register_model(model_info.model_uri, "LogisticRegressionModel")
 
     # Stop the Spark session
     spark.stop()
 
 if __name__ == "__main__":
     main()
-    
+
